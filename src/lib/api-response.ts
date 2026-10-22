@@ -43,7 +43,8 @@ export class ApiResponse {
   }
 
   public static fromZodError(error: ZodError) {
-    const formattedErrors = error.errors.map((e) => ({
+    const issues = error.issues || [];
+    const formattedErrors = issues.map((e) => ({
       field: e.path.join("."),
       message: e.message,
     }));

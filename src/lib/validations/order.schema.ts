@@ -10,11 +10,9 @@ export const createOrderSchema = z.object({
       /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*\.[a-zA-Z]{2,}$/,
       "Please provide a valid domain name (e.g. company.com or outreach.io)"
     ),
-  provider: z.nativeEnum(Provider, {
-    errorMap: () => ({ message: "Provider must be either GOOGLE or MICROSOFT" }),
-  }),
+  provider: z.nativeEnum(Provider),
   mailboxCount: z
-    .number({ invalid_type_error: "Mailbox count must be a number" })
+    .number()
     .int("Mailbox count must be an integer")
     .min(1, "Mailbox count must be at least 1")
     .max(50, "Mailbox count cannot exceed 50"),

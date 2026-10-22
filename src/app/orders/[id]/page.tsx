@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, use } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OrderStatus, Provider, Role, User, MailboxStatus } from "@/types/domain";
@@ -44,8 +45,10 @@ interface OrderDetail {
   auditLogs: AuditLogItem[];
 }
 
-export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function OrderDetailPage() {
+  const urlParams = useParams();
+  const id = typeof urlParams.id === "string" ? urlParams.id : Array.isArray(urlParams.id) ? urlParams.id[0] : "";
+
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);

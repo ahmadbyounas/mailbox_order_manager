@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/navigation";
+import Link from "next/link";
 import { User, Role } from "@/types/domain";
 
 export function Navbar({ currentUser }: { currentUser: User }) {
