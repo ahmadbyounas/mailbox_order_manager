@@ -1,6 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { OrderStatus, MailboxStatus, Provider, Order } from "@/types/domain";
-import { OrderStateMachine } from "@/services/state-machine/order-state-machine";
+import { OrderStateMachine, TransactionClient } from "@/services/state-machine/order-state-machine";
+
+interface OrderTxClient extends TransactionClient {
+  order: TransactionClient["order"] & {
+    create(args: unknown): Promise<unknown>;
+  };
+  mailbox: {
+    updateMany(args: unknown): Promise<unknown>;
+  };
+}
+type TransactionRunner<T> = (fn: (tx: OrderTxClient) => Promise<T>) => Promise<T>;
 
 export interface CreateOrderInput {
   domain: string;
@@ -54,7 +64,8 @@ export class OrderService {
     }));
 
     // 5. Atomic Transaction: Create Order + Mailboxes + Initial AuditLog
-    const newOrder = await prisma.$transaction(async (tx) => {
+    const runTx = prisma.$transaction as unknown as TransactionRunner<Order>;
+    const newOrder = await runTx(async (tx: OrderTxClient): Promise<Order> => {
       const created = await tx.order.create({
         data: {
           userId,
@@ -85,10 +96,10 @@ export class OrderService {
         },
       });
 
-      return created;
+      return created as unknown as Order;
     });
 
-    return newOrder as unknown as Order;
+    return newOrder;
   }
 
   /**
@@ -180,7 +191,8 @@ export class OrderService {
    * Admin-only retry: transitions FAILED order back to PENDING and resets mailboxes
    */
   public static async retryOrder(orderId: string, adminUserId: string): Promise<Order> {
-    const updated = await prisma.$transaction(async (tx) => {
+    const runRetryTx = prisma.$transaction as unknown as TransactionRunner<Order>;
+    const updated = await runRetryTx(async (tx: OrderTxClient): Promise<Order> => {
       // 1. Enforce state machine transition FAILED -> PENDING
       const order = await OrderStateMachine.transition(
         {
