@@ -1,6 +1,8 @@
-import { OrderStatus, Prisma, Order } from "@prisma/client";
+import { OrderStatus, Order } from "@/types/domain";
 import { prisma } from "@/lib/prisma";
 import { InvalidStateTransitionError, TransitionOrderInput } from "./types";
+
+type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 /**
  * Strict Order State Machine Transitions Table
@@ -58,9 +60,9 @@ export class OrderStateMachine {
    */
   public static async transition(
     input: TransitionOrderInput,
-    txClient?: Prisma.TransactionClient
+    txClient?: TransactionClient
   ): Promise<Order> {
-    const execute = async (tx: Prisma.TransactionClient): Promise<Order> => {
+    const execute = async (tx: TransactionClient): Promise<Order> => {
       // 1. Fetch current order state
       const order = await tx.order.findUnique({
         where: { id: input.orderId },
@@ -73,7 +75,7 @@ export class OrderStateMachine {
       // 2. Concurrency / lock check if expectedCurrentStatus provided
       if (input.expectedCurrentStatus && order.status !== input.expectedCurrentStatus) {
         throw new InvalidStateTransitionError(
-          order.status,
+          order.status as OrderStatus,
           input.targetStatus,
           order.id,
           `State conflict: expected order to be in '${input.expectedCurrentStatus}' but found '${order.status}'.`
@@ -81,7 +83,7 @@ export class OrderStateMachine {
       }
 
       // 3. Validate transition legality
-      this.assertValidTransition(order.status, input.targetStatus, order.id);
+      this.assertValidTransition(order.status as OrderStatus, input.targetStatus, order.id);
 
       // 4. Update order status
       const updatedOrder = await tx.order.update({
@@ -99,11 +101,11 @@ export class OrderStateMachine {
           toStatus: input.targetStatus,
           changedById: input.changedById ?? null,
           triggerSource: input.triggerSource,
-          metadata: input.metadata ? (input.metadata as Prisma.InputJsonValue) : Prisma.JsonNull,
+          metadata: input.metadata ?? undefined,
         },
       });
 
-      return updatedOrder;
+      return updatedOrder as unknown as Order;
     };
 
     if (txClient) {

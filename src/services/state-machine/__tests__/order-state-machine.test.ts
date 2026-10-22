@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus } from "@/types/domain";
 import { OrderStateMachine, ALLOWED_TRANSITIONS } from "../order-state-machine";
 import { InvalidStateTransitionError } from "../types";
 

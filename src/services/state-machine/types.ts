@@ -1,4 +1,4 @@
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus } from "@/types/domain";
 
 export type OrderStatusType = keyof typeof OrderStatus;
 
