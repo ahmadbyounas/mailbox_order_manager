@@ -2,10 +2,24 @@ import { OrderStatus, Order } from "@/types/domain";
 import { prisma } from "@/lib/prisma";
 import { InvalidStateTransitionError, TransitionOrderInput } from "./types";
 
-export type TransactionClient = Omit<
-  typeof prisma,
-  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
->;
+export interface TransactionClient {
+  order: {
+    findUnique(args: { where: { id: string } }): Promise<Order | null>;
+    update(args: { where: { id: string }; data: { status: OrderStatus } }): Promise<Order>;
+  };
+  auditLog: {
+    create(args: {
+      data: {
+        orderId: string;
+        fromStatus: OrderStatus | null;
+        toStatus: OrderStatus;
+        changedById: string | null;
+        triggerSource: string;
+        metadata?: unknown;
+      };
+    }): Promise<unknown>;
+  };
+}
 
 /**
  * Strict Order State Machine Transitions Table
@@ -115,10 +129,13 @@ export class OrderStateMachine {
       return execute(txClient);
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      return execute(tx as unknown as TransactionClient);
+    type TransactionRunner = (fn: (tx: TransactionClient) => Promise<Order>) => Promise<Order>;
+    const runTransaction = prisma.$transaction as unknown as TransactionRunner;
+
+    const result = await runTransaction(async (tx: TransactionClient): Promise<Order> => {
+      return execute(tx);
     });
 
-    return result as Order;
+    return result;
   }
 }
